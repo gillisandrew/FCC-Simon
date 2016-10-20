@@ -11,20 +11,35 @@ Simon = (function() {
     var cpu_sequence = [];
     var user_sequence = [];
     var is_strict = false;
+    var interval = 1200
 
     
-    function playSequence(n) {
+    function runSequence(n) {
+        exports.ready = false;
+        $('.main_buttons').removeClass('failed');
+        console.log(cpu_sequence[n]);
+        $('.active').removeClass('active');
+        $('.sector[data-index=' + cpu_sequence[n] + ']').addClass('active');
+        sounds[cpu_sequence[n]].pause();
+        sounds[cpu_sequence[n]].currentTime = 0;
         sounds[cpu_sequence[n]].play();
         n++;
-        setTimeout(function() {
-            if(n < cpu_sequence.length) {
-                playSequence(n);
-            }
-        }, 2000);
+        if(n < cpu_sequence.length) {
+            setTimeout(function() {
+                    runSequence(n);
+            }, interval)
+        }else {
+            setTimeout(function() {
+                $('.active').removeClass('active');
+            }, interval)
+                exports.ready = true;
+                
+        };
     }
     function nextStep() {
-        console.log('RIGHT');
         if(user_sequence.length == cpu_sequence.length) {
+            exports.ready = false;
+            $('#step').html(step_number + 1);
             cpuSelect();
         }
         
@@ -35,22 +50,20 @@ Simon = (function() {
         var cpu_select = Math.floor(Math.random() * 4);
         cpu_sequence.push(cpu_select);
         setTimeout(function() {
-            playSequence(0);
-        }, 2000);
+            runSequence(0);
+        }, interval);
     }
     function failedStep() {
-        console.log('WRONG');
-        console.log(cpu_sequence);
-        console.log(user_sequence);
-        console.log(cpu_sequence == user_sequence)
+        exports.ready = false;
+        $('.main_buttons').addClass('failed');
         if(is_strict) {
             exports.reset();
-            exports.play();
+            exports.start();
         }else {
             user_sequence = [];
             setTimeout(function() {
-                playSequence(0);
-            }, 2000);
+                runSequence(0);
+            }, interval);
         }
     }
     function compareSequence(user, cpu) {
@@ -58,9 +71,11 @@ Simon = (function() {
         if(user[i] == cpu[i]) {
             nextStep();
         }else {
+            exports.ready = false;
             failedStep();
         }
     }
+    exports.ready = false;
     exports.press = function(e) {
         sounds[e].play();
         user_sequence.push(e);
@@ -79,3 +94,28 @@ Simon = (function() {
     }
     return exports;
 })();
+
+$(document).ready(function() {
+    $('#start').on('click', function() {
+        $('#start').disabled = true;
+        Simon.start();
+    });
+    $('#reset').on('click', function() {
+        $('#start').disabled = false;
+        Simon.reset();
+    });
+    $('#strict').on('click', function() {
+        Simon.toggleStrict();
+    });
+    $('.sector').on('mousedown', function() {
+        if(Simon.ready){
+            $(this).addClass('active');
+            Simon.press($(this).data('index'));
+        }
+    });
+    $('.sector').on('mouseup', function() {
+        if(Simon.ready){
+            $(this).removeClass('active');
+        }
+    });
+});
